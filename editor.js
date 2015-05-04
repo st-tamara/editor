@@ -43,9 +43,9 @@ $(function() {
       // this.loadOptions(options);
       this.loadModules(); // Вызов функции loadModules
 
-      // this.formatting = {};
-      // this.core.setCallback('start');
-      // this.start = true;
+      this.formatting = {};
+      this.core.setCallback('start');
+      this.start = true;
       this.build.run();
       
     },
@@ -115,10 +115,17 @@ $(function() {
         setCodeAndCall: function() {
           // set code
           this.code.set(this.content);
+
+          this.build.setOptions();
           this.build.callEditor();
+
+          // code mode
+          if (this.opts.visual) return;
+          setTimeout($.proxy(this.code.showCode, this), 200);
         },
 
         callEditor: function() {
+          
           this.build.setEvents();
           this.build.setHelpers();
 
@@ -140,21 +147,37 @@ $(function() {
 
           // init callback
           this.core.setCallback('init');
+        },
+
+        setOptions: function() {
+          // textarea direction
+          $(this.$textarea).attr('dir', this.opts.direction);
+
+          if (this.opts.linebreaks) this.$editor.addClass('redactor-linebreaks');
+
+          if (this.opts.tabindex) this.$editor.attr('tabindex', this.opts.tabindex);
+
+          if (this.opts.minHeight) this.$editor.css('minHeight', this.opts.minHeight);
+          if (this.opts.maxHeight) this.$editor.css('maxHeight', this.opts.maxHeight);
+
         }
 
       };
-    }
+    },
 
-/*    setCallback: function(type, e, data) {
-      var callback = this.opts[type + 'Callback'];
-        if ($.isFunction(callback)) {
-            return (typeof data == 'undefined') ? callback.call(this, e) : callback.call(this, e, data);
-          }
-        else {
-          return (typeof data == 'undefined') ? e : data;
+    core: function() {
+      return {
+        setCallback: function(type, e, data) {
+          var callback = this.opts[type + 'Callback'];
+            if ($.isFunction(callback)) {
+                return (typeof data == 'undefined') ? callback.call(this, e) : callback.call(this, e, data);
+              }
+            else {
+              return (typeof data == 'undefined') ? e : data;
+            }
         }
-    },*/
-
+      };
+    }
     // отслеживание нажатия клавиш
 /*    keydown: function() {
       return {
