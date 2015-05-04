@@ -46,7 +46,7 @@ $(function() {
       // this.formatting = {};
       // this.core.setCallback('start');
       // this.start = true;
-      // this.build.run();
+      this.build.run();
       
     },
 
@@ -77,13 +77,16 @@ $(function() {
       for (var z = 0; z < len; z++) {
         this[module][methods[z]] = this[module][methods[z]].bind(this);
       }
-    }
+    },
 
-/*    build: function() {
+    build: function() {
       return {
         run: function() {
           this.build.createContainerBox();
-          this.build.loadContent;
+          this.build.loadContent();
+          this.build.loadEditor();
+          this.build.enableEditor();
+          this.build.setCodeAndCall();
         },
 
         isTextarea: function() {
@@ -97,9 +100,50 @@ $(function() {
         loadContent: function() {
           var func = (this.build.isTextarea()) ? 'val' : 'html';
           this.content = $.trim(this.$element[func]());
+        },
+
+        enableEditor: function()
+        {
+          this.$editor.attr({ 'contenteditable': true, 'dir': this.opts.direction });
+        },
+
+        loadEditor: function() {
+          var func = (this.build.isTextarea()) ? 'fromTextarea' : 'fromElement';
+          this.build[func]();
+        },
+
+        setCodeAndCall: function() {
+          // set code
+          this.code.set(this.content);
+          this.build.callEditor();
+        },
+
+        callEditor: function() {
+          this.build.setEvents();
+          this.build.setHelpers();
+
+          // load toolbar
+          if (this.opts.toolbar)
+          {
+            this.opts.toolbar = this.toolbar.init();
+            this.toolbar.build();
+          }
+
+          // modal templates init
+          this.modal.loadTemplates();
+
+          // plugins
+          this.build.plugins();
+
+          // observers
+          setTimeout($.proxy(this.observe.load, this), 4);
+
+          // init callback
+          this.core.setCallback('init');
         }
+
       };
-    },*/
+    }
 
 /*    setCallback: function(type, e, data) {
       var callback = this.opts[type + 'Callback'];
@@ -186,5 +230,5 @@ $(function() {
     }*/
     
   };
-  
+
 });
