@@ -75,12 +75,56 @@ $(function() {
         run: function() {
           // ПРОДОЛЖАТЬ ЗДЕСЬ
 
-          //this.build.createContainerBox();
-          //this.build.loadContent();
-          //this.build.loadEditor();
-          //this.build.enableEditor();
-          //this.build.setCodeAndCall();
-        }
+          this.build.createContainerBox();
+          this.build.loadContent();
+          this.build.loadEditor();
+          this.build.enableEditor();
+          // this.build.setCodeAndCall();
+
+        },
+
+        createContainerBox: function()
+        {
+          this.$box = $('<div class="redactor-box" />');
+        },
+
+        isTextarea: function() {
+          return (this.$element[0].tagName === 'TEXTAREA');
+        },
+
+        loadContent: function() {
+          var func = (this.build.isTextarea()) ? 'val' : 'html';
+          this.content = $.trim(this.$element[func]());
+        },
+
+        loadEditor: function() {
+          var func = (this.build.isTextarea()) ? 'fromTextarea' : 'fromElement';
+          this.build[func]();
+        },
+
+        fromTextarea: function() {
+          this.$editor = $('<div />');
+          this.$textarea = this.$element;
+          this.$box.insertAfter(this.$element).append(this.$editor).append(this.$element);
+          this.$editor.addClass('redactor-editor');
+
+          this.$element.hide();
+        },
+
+        fromElement: function() {
+          this.$editor = this.$element;
+          this.build.createTextarea();
+          this.$box.insertAfter(this.$editor).append(this.$editor).append(this.$textarea);
+          this.$editor.addClass('redactor-editor');
+          this.$textarea.hide();
+        },
+
+        enableEditor: function()
+        {
+          this.$editor.attr({ 'contenteditable': true, 'dir': this.opts.direction });
+        },
+
+        
       }
     },
 
