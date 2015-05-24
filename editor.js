@@ -15,10 +15,15 @@ $(function() {
 
   // Список модулей, которые будут подгружены к основному объекту редактора.
   $.Redactor.modules = ['build', 'core', 'code', 'keydown', 'selection', 'caret', 'utils', 'clean', 'autosave', 'tidy', 'buffer',
-  'paragraphize'];
+  'paragraphize', 'placeholder','observe', 'toolbar', 'linkify'];
 
   $.Redactor.opts = {
     direction: 'ltr',
+
+    focus: false,
+    focusEnd: false,
+
+    placeholder: false,
     visual: true,
     tabindex: false,
     minHeight: false,
@@ -37,8 +42,24 @@ $(function() {
     autosaveOnChange: false,
     autosaveFields: false,
 
+    linkTooltip: true,
+
+    convertLinks: true,
+    convertUrlLinks: true,
+    convertImageLinks: true,
+    convertVideoLinks: true,
+
+    preSpaces: 4,
+
+    buttons: ['html', 'formatting', 'bold', 'italic', 'deleted', 'unorderedlist', 'orderedlist',
+          'outdent', 'indent', 'image', 'file', 'link', 'alignment', 'horizontalrule'],
+    buttonsHide: [],
+    buttonsHideOnMobile: [],
+
     deniedTags: ['script', 'style'],
     allowedTags: false, 
+
+    toolbar: true,
 
     removeComments: false,
     replaceTags: [
@@ -50,7 +71,7 @@ $(function() {
             ['text-decoration:\\s?underline', "u"],
             ['text-decoration:\\s?line-through', 'del']
         ],
-        removeDataAttr: false,
+    removeDataAttr: false,
 
     removeAttr: false,
     allowedAttr: false,
@@ -64,7 +85,16 @@ $(function() {
     invisibleSpace: '&#x200b;',
     blockLevelElements: ['PRE', 'UL', 'OL', 'LI'],
 
-    inlineTags:     ['strong', 'b', 'u', 'em', 'i', 'code', 'del', 'ins', 'samp', 'kbd', 'sup', 'sub', 'mark', 'var', 'cite', 'small']
+    inlineTags:     ['strong', 'b', 'u', 'em', 'i', 'code', 'del', 'ins', 'samp', 'kbd', 'sup', 'sub', 'mark', 'var', 'cite', 'small'],
+
+    linkify: {
+      regexps: {
+        youtube: /https?:\/\/(?:[0-9A-Z-]+\.)?(?:youtu\.be\/|youtube\.com\S*[^\w\-\s])([\w\-]{11})(?=[^\w\-]|$)(?![?=&+%\w.\-]*(?:['"][^<>]*>|<\/a>))[?=&+%\w.-]*/ig,
+        vimeo: /https?:\/\/(www\.)?vimeo.com\/(\d+)($|\/)/,
+        image: /((https?|www)[^\s]+\.)(jpe?g|png|gif)(\?[^\s-]+)?/ig,
+        url: /((?:http[s]?:\/\/(?:www\.)?|www\.){1}(?:[0-9A-Za-z\-%_]+\.)+[a-zA-Z]{2,}(?::[0-9]+)?(?:(?:\/[0-9A-Za-z\-#\.%\+_]*)+)?(?:\?(?:[0-9A-Za-z\-\.%_]+(?:=[0-9A-Za-z\-\.%_\+]*)?)?(?:&(?:[0-9A-Za-z\-\.%_]+(?:=[0-9A-Za-z\-\.%_\+]*)?)?)*)?(?:#[0-9A-Za-z\-\.%_\+=\?&;]*)?)/ig,
+      }
+    }
   };
 
   Redactor.fn = $.Redactor.prototype = {
@@ -184,7 +214,7 @@ $(function() {
           this.build.callEditor();
 
           if (this.opts.visual) return;
-          // setTimeout($.proxy(this.code.showCode, this), 200);
+          setTimeout($.proxy(this.code.showCode, this), 200);
         },
 
         setOptions: function() {
@@ -199,6 +229,20 @@ $(function() {
 
         callEditor: function() {
           this.build.setEvents();
+          this.build.setHelpers();
+          if (this.opts.toolbar) {
+            this.opts.toolbar = this.toolbar.init();
+            this.toolbar.build();
+          }
+
+          // this.modal.loadTemplates();
+
+          // подгрузка плагинов
+          // this.build.plugins();
+
+          setTimeout($.proxy(this.observe.load, this), 4);
+
+          this.core.setCallback('init');
         },
 
         setEvents: function() {
@@ -232,9 +276,204 @@ $(function() {
           }, this));
 
           this.$editor.on('keydown.redactor', $.proxy(this.keydown.init, this));
-        }
+        },
+        setHelpers: function() {
+
+          if (this.linkify.isEnabled()) {
+            this.linkify.format();
+          }
+
+          this.placeholder.enable();
+
+          if (this.opts.focus) setTimeout(this.focus.setStart, 100);
+          if (this.opts.focusEnd) setTimeout(this.focus.setEnd, 100);
+
+        },
       };
     },
+/*    toolbar: function() {
+      return {
+        init: function() {
+        return {
+            html:
+            {
+              title: this.lang.get('html'),
+              func: 'code.toggle'
+            },
+            formatting:
+            {
+              title: this.lang.get('formatting'),
+              dropdown:
+              {
+                p:
+                {
+                  title: this.lang.get('paragraph'),
+                  func: 'block.format'
+                },
+                blockquote:
+                {
+                  title: this.lang.get('quote'),
+                  func: 'block.format'
+                },
+                pre:
+                {
+                  title: this.lang.get('code'),
+                  func: 'block.format'
+                },
+                h1:
+                {
+                  title: this.lang.get('header1'),
+                  func: 'block.format'
+                },
+                h2:
+                {
+                  title: this.lang.get('header2'),
+                  func: 'block.format'
+                },
+                h3:
+                {
+                  title: this.lang.get('header3'),
+                  func: 'block.format'
+                },
+                h4:
+                {
+                  title: this.lang.get('header4'),
+                  func: 'block.format'
+                },
+                h5:
+                {
+                  title: this.lang.get('header5'),
+                  func: 'block.format'
+                }
+              }
+            },
+            bold:
+            {
+              title: this.lang.get('bold'),
+              func: 'inline.format'
+            },
+            italic:
+            {
+              title: this.lang.get('italic'),
+              func: 'inline.format'
+            },
+            deleted:
+            {
+              title: this.lang.get('deleted'),
+              func: 'inline.format'
+            },
+            underline:
+            {
+              title: this.lang.get('underline'),
+              func: 'inline.format'
+            },
+            unorderedlist:
+            {
+              title: '&bull; ' + this.lang.get('unorderedlist'),
+              func: 'list.toggle'
+            },
+            orderedlist:
+            {
+              title: '1. ' + this.lang.get('orderedlist'),
+              func: 'list.toggle'
+            },
+            outdent:
+            {
+              title: '< ' + this.lang.get('outdent'),
+              func: 'indent.decrease'
+            },
+            indent:
+            {
+              title: '> ' + this.lang.get('indent'),
+              func: 'indent.increase'
+            },
+            image:
+            {
+              title: this.lang.get('image'),
+              func: 'image.show'
+            },
+            file:
+            {
+              title: this.lang.get('file'),
+              func: 'file.show'
+            },
+            link:
+            {
+              title: this.lang.get('link'),
+              dropdown:
+              {
+                link:
+                {
+                  title: this.lang.get('link_insert'),
+                  func: 'link.show'
+                },
+                unlink:
+                {
+                  title: this.lang.get('unlink'),
+                  func: 'link.unlink'
+                }
+              }
+            },
+            alignment:
+            {
+              title: this.lang.get('alignment'),
+              dropdown:
+              {
+                left:
+                {
+                  title: this.lang.get('align_left'),
+                  func: 'alignment.left'
+                },
+                center:
+                {
+                  title: this.lang.get('align_center'),
+                  func: 'alignment.center'
+                },
+                right:
+                {
+                  title: this.lang.get('align_right'),
+                  func: 'alignment.right'
+                },
+                justify:
+                {
+                  title: this.lang.get('align_justify'),
+                  func: 'alignment.justify'
+                }
+              }
+            },
+            horizontalrule:
+            {
+              title: this.lang.get('horizontalrule'),
+              func: 'line.insert'
+            }
+          };
+        },
+        build: function() {
+          this.toolbar.hideButtons();
+          this.toolbar.hideButtonsOnMobile();
+          this.toolbar.isButtonSourceNeeded();
+
+          if (this.opts.buttons.length === 0) return;
+
+          this.$toolbar = this.toolbar.createContainer();
+
+          this.toolbar.setOverflow();
+          this.toolbar.append();
+          this.toolbar.setFormattingTags();
+          this.toolbar.loadButtons();
+          this.toolbar.setFixed();
+
+          // buttons response
+          if (this.opts.activeButtons)
+          {
+            this.$editor.on('mouseup.redactor keyup.redactor focus.redactor', $.proxy(this.observe.buttons, this));
+          }
+
+        },
+      };
+    },*/
+
+
 
     // Модуль, который позволяет создавать собственные обработчики событий и прикрепляться к ним.
     // (Пока что не используется.)
@@ -410,6 +649,24 @@ $(function() {
           } catch (e) {}
           this.sel.addRange(this.range);
         },
+        getCurrent: function() {
+          var el = false;
+          this.selection.get();
+
+          if (this.sel && this.sel.rangeCount > 0) {
+            el = this.sel.getRangeAt(0).startContainer;
+          }
+
+          return this.utils.isRedactorParent(el);
+        },
+        getParent: function(elem) {
+          elem = elem || this.selection.getCurrent();
+          if (elem) {
+            return this.utils.isRedactorParent($(elem).parent()[0]);
+          }
+
+          return false;
+        },
       }
     },
     caret: function() {
@@ -451,6 +708,27 @@ $(function() {
           catch (e) {}
           this.selection.addRange();
         },
+        setAfter: function(node) {
+          try {
+            var tag = $(node)[0].tagName;
+
+            if (tag != 'BR' && !this.utils.isBlock(node)) {
+              var space = this.utils.createSpaceElement();
+
+              $(node).after(space);
+              this.caret.setEnd(space);
+            }
+            else {
+              this.caret.setAfterOrBefore(node, 'after');
+            }
+          }
+          catch (e)
+          {
+            var space = this.utils.createSpaceElement();
+            $(node).after(space);
+            this.caret.setEnd(space);
+          }
+        },
       }
     },
     utils: function() {
@@ -471,18 +749,75 @@ $(function() {
           space.innerHTML = this.opts.invisibleSpace;
 
           return space;
-        }
+        },
+        isCurrentOrParent: function(tagName) {
+          var parent = this.selection.getParent();
+          var current = this.selection.getCurrent();
+
+          if ($.isArray(tagName)) {
+            var matched = 0;
+            $.each(tagName, $.proxy(function(i, s) {
+              if (this.utils.isCurrentOrParentOne(current, parent, s)) {
+                matched++;
+              }
+            }, this));
+
+            return (matched === 0) ? false : true;
+          }
+          else {
+            return this.utils.isCurrentOrParentOne(current, parent, tagName);
+          }
+        },
+        isCurrentOrParentOne: function(current, parent, tagName) {
+          tagName = tagName.toUpperCase();
+
+          return parent && parent.tagName === tagName ? parent : current && current.tagName === tagName ? current : false;
+        },
+        isRedactorParent: function(el) {
+          if (!el) {
+            return false;
+          }
+
+          if ($(el).parents('.redactor-editor').length === 0 || $(el).hasClass('redactor-editor')) {
+            return false;
+          }
+
+          return el;
+        },
+        isEmpty: function(html, removeEmptyTags) {
+          html = html.replace(/[\u200B-\u200D\uFEFF]/g, '');
+          html = html.replace(/&nbsp;/gi, '');
+          html = html.replace(/<\/?br\s?\/?>/g, '');
+          html = html.replace(/\s/g, '');
+          html = html.replace(/^<p>[^\W\w\D\d]*?<\/p>$/i, '');
+          html = html.replace(/<iframe(.*?[^>])>$/i, 'iframe');
+          html = html.replace(/<source(.*?[^>])>$/i, 'source');
+
+          // удаление пустых тегов
+          if (removeEmptyTags !== false) {
+            html = html.replace(/<[^\/>][^>]*><\/[^>]+>/gi, '');
+            html = html.replace(/<[^\/>][^>]*><\/[^>]+>/gi, '');
+          }
+
+          html = $.trim(html);
+
+          return html === '';
+        },
       }
     },
     code: function() {
       return {
         set: function(html) {
           html = $.trim(html.toString());
+
           html = this.clean.onSet(html);
+
           this.$editor.html(html);
           this.code.sync();
 
-          if (html !== '') this.placeholder.remove();
+          if (html !== '') {
+            this.placeholder.remove();
+          }
 
           setTimeout($.proxy(this.buffer.add, this), 15);
           if (this.start === false) this.observe.load();
@@ -535,8 +870,12 @@ $(function() {
 
           html = html.replace(/<a href="(.*?[^>]?)®(.*?[^>]?)">/gi, '<a href="$1&reg$2">');
 
-          if (this.opts.replaceDivs) html = this.clean.replaceDivs(html);
-          if (this.opts.linebreaks)  html = this.clean.replaceParagraphsToBr(html);
+          if (this.opts.replaceDivs){
+            html = this.clean.replaceDivs(html);
+          }
+          if (this.opts.linebreaks) {
+            html = this.clean.replaceParagraphsToBr(html);
+          }
 
           html = this.clean.saveFormTags(html);
 
@@ -966,6 +1305,108 @@ $(function() {
           html = html.replace(new RegExp('<br\\s?/?>\n?<(' + this.paragraphize.blocks.join('|') + ')(.*?[^>])>', 'gi'), '<p><br /></p>\n<$1$2>');
 
           return $.trim(html);
+        }
+      }
+    },
+    placeholder: function() {
+      return {
+        enable: function() {
+          if (!this.placeholder.is()) return;
+
+          this.$editor.attr('placeholder', this.$element.attr('placeholder'));
+
+          this.placeholder.toggle();
+          this.$editor.on('keyup.redactor-placeholder', $.proxy(this.placeholder.toggle, this));
+
+        },
+        toggle: function() {
+          var func = 'removeClass';
+          if (this.utils.isEmpty(this.$editor.html(), false)) func = 'addClass';
+          this.$editor[func]('redactor-placeholder');
+        },
+/*        remove: function() {
+          this.$editor.removeClass('redactor-placeholder');
+        },*/
+        is: function() {
+          if (this.opts.placeholder) {
+            return this.$element.attr('placeholder', this.opts.placeholder);
+          }
+          else {
+            return !(typeof this.$element.attr('placeholder') == 'undefined' || this.$element.attr('placeholder') === '');
+          }
+        }
+      }
+    },
+    observe: function() {
+      return {
+        load: function() {
+          this.observe.images();
+          this.observe.links();
+        },
+        images: function() {
+          this.$editor.find('img').each($.proxy(function(i, img) {
+            var $img = $(img);
+
+            this.image.setEditable($img);
+
+          }, this));
+
+          $(document).on('click.redactor-image-delete.' + this.uuid, $.proxy(function(e) {
+            this.observe.image = false;
+            if (e.target.tagName == 'IMG' && this.utils.isRedactorParent(e.target)) {
+              this.observe.image = (this.observe.image && this.observe.image == e.target) ? false : e.target;
+            }
+
+          }, this));
+
+        },
+        links: function()
+        {
+          if (!this.opts.linkTooltip) return;
+
+          this.$editor.find('a').on('touchstart.redactor.' + this.uuid + ' click.redactor.' + this.uuid, $.proxy(this.observe.showTooltip, this));
+          this.$editor.on('touchstart.redactor.' + this.uuid + ' click.redactor.' + this.uuid, $.proxy(this.observe.closeTooltip, this));
+          $(document).on('touchstart.redactor.' + this.uuid + ' click.redactor.' + this.uuid, $.proxy(this.observe.closeTooltip, this));
+        },
+      }
+    },
+    linkify: function() {
+      return {
+        isEnabled: function() {
+          return this.opts.convertLinks && (this.opts.convertUrlLinks || this.opts.convertImageLinks || this.opts.convertVideoLinks) && !this.utils.isCurrentOrParent('PRE');
+        },
+        format: function() {
+          var linkify = this.linkify,
+            opts    = this.opts;
+
+/*          this.$editor
+            .find(":not(iframe,img,a,pre)")
+            .addBack()
+            .contents()
+            .filter(function() {
+              return this.nodeType === 3 && $.trim(this.nodeValue) != "" && !$(this).parent().is("pre") && (this.nodeValue.match(opts.linkify.regexps.youtube) || this.nodeValue.match(opts.linkify.regexps.vimeo) || this.nodeValue.match(opts.linkify.regexps.image) || this.nodeValue.match(opts.linkify.regexps.url));
+            }).each(function() {
+              var text = $(this).text(), html = text;
+
+              if (opts.convertImageLinks && html.match(opts.linkify.regexps.image)) {
+                html = linkify.convertImages(html);
+              }
+              else if (opts.convertUrlLinks && !html.match(opts.linkify.regexps.youtube) && !html.match(opts.linkify.regexps.vimeo)) {
+                html = linkify.convertLinks(html);
+              }
+
+              if (opts.convertVideoLinks) {
+                html = linkify.convertVideoLinks(html);
+              }
+
+              $(this).before(text.replace(text, html)).remove();
+            });*/
+
+          this.linkify.after();
+        },
+        after: function() {
+          this.observe.load();
+          this.code.sync();
         }
       }
     }
